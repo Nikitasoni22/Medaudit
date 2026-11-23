@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MedAudit Auditor Console</title>
+<style>
+:root{--bg:#f2f4f8;--panel:#fff;--panel2:#f0f3f8;--line:#d5dce6;--text:#18212c;--mute:#5d6f84;--acc:#3b5bdb;--accbg:#e8edff;
+--ok:#188a5b;--bad:#c9323f;--warn:#a86a00;--okbg:#e5f6ee;--badbg:#fdeaec;--warnbg:#fff4df}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--panel:#151b23;--panel2:#1c2430;--line:#28323f;--text:#dce5ee;--mute:#8497a9;--acc:#7c9cff;--accbg:#1d2747;
+--ok:#3fb37f;--bad:#f0616d;--warn:#e5a93d;--okbg:#10301f;--badbg:#3a1b1f;--warnbg:#33290f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:var(--panel);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+header h1{margin:0;font-size:17px;color:var(--acc)} .sp{flex:1} .who{color:var(--mute);font-size:13px}
+main{max-width:1250px;margin:18px auto;padding:0 16px;display:grid;gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+input,select,button{font:inherit;color:inherit}
+input,select{padding:7px 9px;border:1px solid var(--line);border-radius:7px;background:var(--panel2)}
+button{padding:7px 13px;border:1px solid var(--line);border-radius:7px;background:var(--panel);cursor:pointer}
+button:hover{border-color:var(--acc)} button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.status{border-radius:10px;padding:14px 18px;border:1px solid;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.status.ok{background:var(--okbg);border-color:var(--ok);color:var(--ok)} .status.bad{background:var(--badbg);border-color:var(--bad);color:var(--bad)}
+.status h2{margin:0;font-size:18px} .status .meta{color:var(--text);font-size:13px;opacity:.9}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px} .stat b{display:block;font-size:22px} .stat span{color:var(--mute);font-size:12px}
+.tabs{display:flex;gap:6px;flex-wrap:wrap} .tabs button.on{background:var(--accbg);border-color:var(--acc);color:var(--acc)}
+table{width:100%;border-collapse:collapse} th,td{padding:7px 9px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--mute)}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+.sev-WARN{color:var(--warn)} .sev-ERROR,.sev-CRITICAL{color:var(--bad);font-weight:600}
+tr.crit td{background:var(--badbg)} tr.warn td{background:var(--warnbg)}
+.scroll{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:8px}
+th{position:sticky;top:0;background:var(--panel2)}
+.hint{color:var(--mute);font-size:12px} .notice{padding:9px 12px;border-radius:8px;margin:8px 0}
+.notice.bad{background:var(--badbg);color:var(--bad)} .notice.ok{background:var(--okbg);color:var(--ok)}
+.login{max-width:380px;margin:70px auto} .login input{width:100%;margin:4px 0 10px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<header><h1>MedAudit · Auditor Console</h1><span class="sp"></span><span class="who" id="who"></span><button id="out" hidden>Sign out</button></header>
+<main id="app"></main>
+<script>
+const $ = s => document.querySelector(s), app = $('#app');
+let token = sessionStorage.getItem('atok'), me = null, tab = 'logs', poll = null;
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt = t => new Date(typeof t === 'number' ? t*1000 : t).toLocaleString();
+async function api(p, m='GET', b) {
+  const r = await fetch(p, {method:m, headers:{'Content-Type':'application/json', ...(token?{Authorization:'Bearer '+token}:{})}, body:b?JSON.stringify(b):undefined});
+  let d = null; try { d = await r.json(); } catch(e) {}
+  if (r.status === 401 && token && p !== '/api/login') { out(); throw new Error('401'); }
+  if (!r.ok) { const e = new Error(d?.detail?.error || (typeof d?.detail === 'string' ? d.detail : 'Request failed')); e.detail = d?.detail; e.status = r.status; throw e; }
+  return d;
+}
+function out() { token = null; sessionStorage.removeItem('atok'); clearInterval(poll); login(); }
+$('#out').onclick = async () => { try { await api('/api/logout','POST'); } catch(e) {} out(); };
+
+function login(msg='') {
+  $('#who').textContent = ''; $('#out').hidden = true;
+  app.innerHTML = `<div class="card login"><h2>Auditor sign-in</h2>${msg}<label>Username</label><input id="u" name="username" autocomplete="username" autofocus><label>Password</label><div class="row"><input id="p" class="grow" name="password" type="password" autocomplete="current-password" required><button type="button" id="toggle">Show</button></div><div id="err"></div><button class="primary" id="go" style="margin-top:10px">Sign in</button></div>`;
+  const go = async () => { try { const r = await api('/api/login','POST',{username:$('#u').value,password:$('#p').value}); token=r.token; me=r.user; sessionStorage.setItem('atok',token); dash(); }
+    catch(e) { $('#err').innerHTML = `<div class="notice bad">${esc(e.message)}</div>`; } };
+  $('#go').onclick = go; $('#p').addEventListener('keydown', e => { if (e.key === 'Enter') go(); });
+    $('#toggle').onclick = () => {
+      const visible = $('#p').type === 'text';
+      $('#p').type = visible ? 'password' : 'text';
+      $('#toggle').textContent = visible ? 'Show' : 'Hide';
+    };
+}
+
+async function dash() {
+  try { me = await api('/api/me'); } catch(e) { return; }
+  $('#who').textContent = me.full_name; $('#out').hidden = false;
+  app.innerHTML = `<div id="status"></div><div class="stats" id="stats"></div>
+    <div class="card"><div class="tabs" id="tabs">${[['logs','Audit trail'],['patient','Patient access report'],['bg','Break-glass'],['alerts','Alerts'],['cps','Checkpoints'],['console','Console activity']]
+      .map(([k,l])=>`<button data-t="${k}">${l}</button>`).join('')}</div><div id="body" style="margin-top:12px"></div></div>`;
+  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { tab = b.dataset.t; showTab(); });
+  refresh(); showTab(); clearInterval(poll); poll = setInterval(refresh, 15000);
+}
+
+async function refresh(force=false) {
+  let s; try { s = force ? await api('/api/verify','POST') : await api('/api/status'); } catch(e) { if (e.message!=='401') $('#status').innerHTML = `<div class="status bad"><h2>Console error</h2><div class="meta">${esc(e.message)}</div></div>`; return; }
+  const cp = s.last_checkpoint;
+  $('#status').innerHTML = s.ok
+    ? `<div class="status ok"><h2>✓ Audit log verified</h2><div class="meta">${s.records} records · tags, hash chain, sequence and anchor all valid · ${s.checkpoints} off-host checkpoint(s) enforced${cp?` · latest #${cp.seq}`:''}<br>Checked ${fmt(s.checked_at)}</div><span class="sp"></span><button id="vn">Verify now</button><button class="primary" id="cp">Publish checkpoint</button></div>`
+    : `<div class="status bad"><h2>⚠ TAMPERING DETECTED</h2><div class="meta"><b>Record ${esc(s.bad_seq)}:</b> ${esc(s.reason)}<br>Log contents are withheld until the incident is resolved. ${s.alerts} alert(s) raised.</div><span class="sp"></span><button id="vn">Re-verify</button></div>`;
+  $('#vn').onclick = () => refresh(true);
+  $('#cp') && ($('#cp').onclick = async () => { try { const r = await api('/api/checkpoint','POST'); await refresh(); if (tab==='cps') showTab(); } catch(e) { alert(e.message); } });
+  try { const m = await api('/api/reports/summary'); $('#stats').innerHTML = [['Events',m.total],['Failed logins',m.failed_logins],['Access denied',m.denied],['Break-glass',m.break_glass],['Account lockouts',m.locked]]
+      .map(([l,v]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join(''); } catch(e) { $('#stats').innerHTML = ''; }
+}
+
+async function showTab() {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.t === tab));
+  const body = $('#body');
+  try {
+    if (tab === 'logs') return logsTab(body);
+    if (tab === 'patient') return patientTab(body);
+    if (tab === 'bg') { const r = await api('/api/reports/break-glass');
+      return body.innerHTML = `<p class="hint">Emergency overrides. Each needs a compliance review. ${r.views_under_break_glass} record view(s) were made under break-glass.</p>` +
+        (r.grants.length ? `<table><tr><th>Time</th><th>User</th><th>Patient</th><th>Stated reason</th></tr>${r.grants.map(g=>`<tr class="crit"><td>${fmt(g.time)}</td><td>${esc(g.actor)}</td><td>${esc(g.data.patient)}</td><td>${esc(g.data.reason)}</td></tr>`).join('')}</table>` : '<p>No break-glass events.</p>'); }
+    if (tab === 'alerts') { const r = await api('/api/alerts');
+      return body.innerHTML = r.length ? `<table><tr><th>Detected</th><th>Record</th><th>Reason</th></tr>${r.map(a=>`<tr class="crit"><td>${fmt(a.time)}</td><td>${esc(a.bad_seq)}</td><td>${esc(a.reason)}</td></tr>`).join('')}</table>` : '<p>No tamper alerts. ✓</p>'; }
+    if (tab === 'cps') { const r = await api('/api/checkpoints');
+      return body.innerHTML = `<p class="hint">Checkpoints are stored on the auditor side, outside the hospital host. Every verification checks the log against all of them, so removed records or a restored old backup are detected.</p>` +
+        (r.length ? `<table><tr><th>Published</th><th>Up to record</th><th>Hash</th></tr>${r.map(c=>`<tr><td>${fmt(c.time)}</td><td>${c.seq}</td><td class="mono">${esc(c.hash)}</td></tr>`).join('')}</table>` : '<p>None yet. Press “Publish checkpoint”.</p>'); }
+    if (tab === 'console') { const r = await api('/api/console-log');
+      return body.innerHTML = `<p class="hint">Who has looked at the audit trail. This log is itself encrypted and tamper-evident.</p><div class="scroll"><table><tr><th>#</th><th>Time</th><th>Auditor</th><th>Action</th><th>Details</th></tr>${r.rows.map(x=>`<tr><td>${x.seq}</td><td>${fmt(x.time)}</td><td>${esc(x.actor)}</td><td>${esc(x.data.event)}</td><td class="mono">${esc(JSON.stringify(Object.fromEntries(Object.entries(x.data).filter(([k])=>!['event','ip'].includes(k)))))}</td></tr>`).join('')}</table></div>`; }
+  } catch(e) { body.innerHTML = `<div class="notice bad">${esc(e.message)}${e.detail?.reason?` — record ${esc(e.detail.bad_seq)}: ${esc(e.detail.reason)}`:''}</div>`; }
+}
+
+async function logsTab(body) {
+  body.innerHTML = `<div class="row"><select id="fe"><option value="">All events</option>${['LOGIN_SUCCESS','LOGIN_FAILED','ACCOUNT_LOCKED','PATIENT_LIST','PATIENT_VIEW','PATIENT_UPDATE','PATIENT_CREATE','ACCESS_DENIED','BREAK_GLASS','USER_CREATE','USER_DISABLE','ASSIGNMENT_ADD','SESSION_REJECTED'].map(e=>`<option>${e}</option>`).join('')}</select>
+    <select id="fs"><option value="">Any severity</option><option>WARN</option><option>ERROR</option><option>CRITICAL</option></select>
+    <input id="fu" placeholder="user"><input id="fp" placeholder="patient ID"><input id="fq" placeholder="search text"><button class="primary" id="ap">Apply</button></div><div id="lr" style="margin-top:10px"></div>`;
+  const run = async () => {
+    const q = new URLSearchParams({event:$('#fe').value, severity:$('#fs').value, user:$('#fu').value, patient:$('#fp').value, q:$('#fq').value, limit:200});
+    try { const r = await api('/api/logs?' + q);
+      $('#lr').innerHTML = `<div class="hint">${r.total} matching record(s), newest first · all decrypted only after verification</div><div class="scroll"><table><tr><th>#</th><th>Time</th><th>Sev</th><th>User</th><th>Event</th><th>Patient</th><th>Details</th></tr>
+      ${r.rows.map(x => { const d = x.data, det = Object.entries(d).filter(([k]) => !['event','patient','role','ip','req'].includes(k)).map(([k,v]) => `${k}=${typeof v==='object'?JSON.stringify(v):v}`).join(' ');
+        return `<tr class="${x.severity==='CRITICAL'?'crit':x.severity==='WARN'||x.severity==='ERROR'?'warn':''}"><td>${x.seq}</td><td>${fmt(x.time)}</td><td class="sev-${x.severity}">${x.severity}</td><td>${esc(x.actor)}${d.role?` <span class="hint">${esc(d.role)}</span>`:''}</td><td>${esc(x.event)}</td><td>${esc(d.patient||'')}</td><td class="mono">${esc(det)}${d.ip?` <span class="hint">@${esc(d.ip)}</span>`:''}</td></tr>`; }).join('')}</table></div>`;
+    } catch(e) { $('#lr').innerHTML = `<div class="notice bad">${esc(e.message)}${e.detail?.reason?` — record ${esc(e.detail.bad_seq)}: ${esc(e.detail.reason)}`:''}</div>`; }
+  };
+  $('#ap').onclick = run; run();
+}
+
+function patientTab(body) {
+  body.innerHTML = `<p class="hint">Accounting of disclosures: everyone who accessed a patient's record, when and on what basis.</p><div class="row"><input id="pid" placeholder="Patient ID, e.g. P-1001" value="P-1001"><button class="primary" id="go">Run report</button></div><div id="pr" style="margin-top:10px"></div>`;
+  const run = async () => { try { const r = await api('/api/reports/patient/' + encodeURIComponent($('#pid').value.trim()));
+      $('#pr').innerHTML = r.accesses.length ? `<table><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th><th>Scope</th><th>Basis</th></tr>${r.accesses.map(a=>`<tr class="${a.event==='BREAK_GLASS'?'crit':a.event==='ACCESS_DENIED'||a.basis==='break_glass'?'warn':''}"><td>${fmt(a.time)}</td><td>${esc(a.user)}</td><td>${esc(a.role||'')}</td><td>${esc(a.event)}</td><td>${esc(a.scope||'')}</td><td>${esc(a.basis||'')}${a.reason?`<br><span class="hint">“${esc(a.reason)}”</span>`:''}</td></tr>`).join('')}</table>` : '<p>No accesses recorded.</p>';
+    } catch(e) { $('#pr').innerHTML = `<div class="notice bad">${esc(e.message)}</div>`; } };
+  $('#go').onclick = run; run();
+}
+
+(async () => { if (token) { try { await api('/api/me'); return dash(); } catch(e) {} } login(); })();
+</script>
+</body>
+</html>
