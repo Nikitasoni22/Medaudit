@@ -19,7 +19,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements-dev.lock
       - name: Install locked dependencies without source builds
-        run: python -m pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
+        run: 'python -m pip install --require-hashes --only-binary=:all: -r requirements-dev.lock'
       - name: Static correctness checks
         run: python -m ruff check medaudit tests scripts
       - name: Security regression tests
