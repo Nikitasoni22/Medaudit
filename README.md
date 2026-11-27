@@ -128,6 +128,16 @@ it generates random passwords and prints them once.
 Status banner (verified / tampering), audit trail with filters, **patient access report** (accounting of disclosures),
 break-glass review, tamper alerts, checkpoints, and the **console's own activity log** (who looked at the audit trail).
 
+## Assignment report
+
+The course report follows the supplied Secure SELC front-page and contents
+templates, with the original cover design and mentor details preserved.
+
+- [Complete project report](docs/report/MedAudit_Project_Report.docx)
+- [Filled front-page template](docs/report/MedAudit_Front_Page.docx)
+- [Requirements and engineering decisions](docs/ENGINEERING.md)
+- [Recorded verification evidence](docs/verification.json)
+
 ## Repeatable checks
 
 ```bash

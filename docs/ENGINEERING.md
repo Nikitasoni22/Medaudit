@@ -195,8 +195,9 @@ in a separate temporary directory.
 The current local verification evidence is recorded in
 [`verification.json`](verification.json). The requirement catalogue links test
 names rather than displaying invented live pass/fail badges. CI repeats tests on
-Windows and Linux and runs the browser flow on Linux. Remote CI status must be
-read from the actual workflow run; configuring it is not evidence it has passed.
+Windows and Linux and runs the browser flow on Linux. The [recorded GitHub Actions run](https://github.com/Nikitasoni22/Medaudit/actions/runs/45984825412)
+passed on both Windows and Linux, including browser acceptance on Linux. The
+verification file records the exact tested code revision.
 
 ## Limitations and future work
 

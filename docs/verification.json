@@ -2,11 +2,61 @@
   "verified_on": "2026-11-27",
   "platform": "Windows",
   "python": "3.12.15",
-  "pytest": {"passed": 73, "failed": 0, "warnings": 1, "warning_detail": "Starlette warns that its httpx TestClient compatibility path is deprecated."},
-  "coverage": {"statement_percent_rounded": 92, "statements": 1309, "missing": 101, "scope": "medaudit on native Windows; not branch coverage or proof of POSIX execution"},
-  "static_check": {"command": "python -m ruff check medaudit tests scripts", "result": "passed", "scope": "fatal syntax and undefined-name checks configured in pyproject.toml"},
-  "runtime_dependency_audit": {"known_vulnerabilities": 0, "packages": 18, "scope": "requirements.lock at verification time"},
-  "isolated_lab": {"ciphertext_tampering": "detected at record 2", "whole_host_rollback": "detected against retained checkpoint"},
-  "browser": {"engine": "Chromium", "desktop": "1440x1100", "mobile": "390x844", "result": "passed", "page_errors": 0, "flows": ["staff login", "assigned access", "denied access", "emergency access", "auditor login", "checkpoint", "durable review", "findings", "policy simulation", "filtered JSON download", "navigation", "mobile overflow"]},
-  "remote_ci": "Configured; inspect the actual GitHub Actions run for execution status."
+  "pytest": {
+    "passed": 73,
+    "failed": 0,
+    "warnings": 1,
+    "warning_detail": "Starlette warns that its httpx TestClient compatibility path is deprecated."
+  },
+  "coverage": {
+    "statement_percent_rounded": 92,
+    "statements": 1309,
+    "missing": 101,
+    "scope": "medaudit on native Windows; not branch coverage or proof of POSIX execution"
+  },
+  "static_check": {
+    "command": "python -m ruff check medaudit tests scripts",
+    "result": "passed",
+    "scope": "fatal syntax and undefined-name checks configured in pyproject.toml"
+  },
+  "runtime_dependency_audit": {
+    "known_vulnerabilities": 0,
+    "packages": 18,
+    "scope": "requirements.lock at verification time"
+  },
+  "isolated_lab": {
+    "ciphertext_tampering": "detected at record 2",
+    "whole_host_rollback": "detected against retained checkpoint"
+  },
+  "browser": {
+    "engine": "Chromium",
+    "desktop": "1440x1100",
+    "mobile": "390x844",
+    "result": "passed",
+    "page_errors": 0,
+    "flows": [
+      "staff login",
+      "assigned access",
+      "denied access",
+      "emergency access",
+      "auditor login",
+      "checkpoint",
+      "durable review",
+      "findings",
+      "policy simulation",
+      "filtered JSON download",
+      "navigation",
+      "mobile overflow"
+    ]
+  },
+  "remote_ci": {
+    "status": "success",
+    "run_id": 45984825412,
+    "code_commit": "5177115c2254bcef6ebbf3408298add35cfd454b",
+    "platforms": [
+      "ubuntu-latest",
+      "windows-latest"
+    ],
+    "url": "https://github.com/Nikitasoni22/Medaudit/actions/runs/45984825412"
+  }
 }
