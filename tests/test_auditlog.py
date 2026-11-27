@@ -8,6 +8,7 @@ import pytest
 from medaudit.auditlog import (AuditWriter, AuditVerifier, Checkpoint, AuditError, IntegrityError,
                                KeyringError, create_keyring, add_key, load_keyring)
 from medaudit.auditlog import core
+from medaudit.auditlog import platformio
 
 
 @pytest.fixture
@@ -25,7 +26,24 @@ def lines(d):
 
 
 def put(d, ls):
-    open(os.path.join(d, "audit.log"), "w").write("\n".join(ls) + ("\n" if ls else ""))
+    with open(os.path.join(d, "audit.log"), "w", newline="") as stream:
+        stream.write("\n".join(ls) + ("\n" if ls else ""))
+
+
+def public_permissions(path):
+    if os.name == "nt":
+        import ntsecuritycon
+        import win32security
+        descriptor = win32security.GetFileSecurity(path, win32security.DACL_SECURITY_INFORMATION)
+        acl = descriptor.GetSecurityDescriptorDacl()
+        acl.AddAccessAllowedAce(win32security.ACL_REVISION, ntsecuritycon.FILE_GENERIC_READ,
+                               win32security.CreateWellKnownSid(win32security.WinWorldSid, None))
+        win32security.SetNamedSecurityInfo(
+            path, win32security.SE_FILE_OBJECT,
+            win32security.DACL_SECURITY_INFORMATION | win32security.PROTECTED_DACL_SECURITY_INFORMATION,
+            None, None, acl, None)
+    else:
+        os.chmod(path, 0o644)
 
 
 def fill(w, n):
@@ -243,14 +261,14 @@ def test_checkpoint_parse_and_refusal(env):
 def test_key_file_handling(env):
     w, v, d, keys, _ = env
     fill(w, 1)
-    os.chmod(keys, 0o640)
+    public_permissions(keys)
     with pytest.raises(KeyringError):
         v.scan()
-    os.chmod(keys, 0o600)
-    os.chmod(w.state_path, 0o644)
+    platformio.make_private(keys)
+    public_permissions(w.state_path)
     with pytest.raises(KeyringError):
         w.append("alice", "INFO", '{"a":1}')
-    os.chmod(w.state_path, 0o600)
+    platformio.make_private(w.state_path)
     open(w.state_path, "w").write("garbage\n")
     with pytest.raises(KeyringError):
         w.append("alice", "INFO", '{"a":1}')
@@ -263,8 +281,8 @@ def test_permissions_and_reinit(env):
     w, v, d, keys, tmp = env
     fill(w, 1)
     for p in (w.log_path, w.state_path, w.anchor_path, keys):
-        assert os.stat(p).st_mode & 0o077 == 0, p
-    assert os.stat(d).st_mode & 0o077 == 0
+        platformio.check_private(p)
+    platformio.check_private(d, directory=True)
     with pytest.raises(IntegrityError):
         AuditWriter.initialize(d, b"x" * 32)
 

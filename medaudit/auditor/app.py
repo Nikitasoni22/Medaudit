@@ -10,6 +10,7 @@ This service is the ONLY place that holds the root key. It:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import time
@@ -23,6 +24,8 @@ from pydantic import BaseModel, Field
 from ..auditlog import (AuditError, AuditVerifier, AuditWriter, Checkpoint, KeyringError, ScanResult)
 from ..config import Config
 from ..security import new_token, token_digest, verify_password
+from ..auditlog.platformio import private_open
+from .workflows import create_router
 
 SEV_ORDER = {"DEBUG": 0, "INFO": 1, "WARN": 2, "ERROR": 3, "CRITICAL": 4}
 
@@ -33,7 +36,7 @@ class LoginIn(BaseModel):
 
 
 def _append_jsonl(path: str, obj: dict) -> None:
-    fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+    fd = private_open(path, os.O_WRONLY | os.O_APPEND | os.O_CREAT)
     try:
         os.write(fd, (json.dumps(obj, separators=(",", ":")) + "\n").encode())
         os.fsync(fd)
@@ -55,6 +58,7 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
     console_verifier = AuditVerifier(cfg.console_audit_dir, cfg.console_keys)
     scan_lock = threading.Lock()
     cache: dict = {"key": None, "res": None, "at": 0.0}
+    scheduler_status = {"last_success": None, "error": None}
     sessions: dict[str, dict] = {}
     fails: dict[str, list] = {}
     stop = threading.Event()
@@ -96,8 +100,10 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
                 console_writer.append("scheduler", "INFO" if res.ok else "CRITICAL", json.dumps(
                     {"event": "SCHEDULED_VERIFY", "ok": res.ok, "records": res.records, "bad_seq": res.bad_seq or None,
                      "reason": res.reason or None, "checkpoint": str(cp) if cp else None}, separators=(",", ":")))
+                scheduler_status.update(last_success=time.time(), error=None)
             except Exception:
-                pass
+                scheduler_status['error'] = 'automatic verification failed; check keys and storage'
+                logging.getLogger(__name__).error('Automatic verification failed; check keys and storage')
 
     @asynccontextmanager
     async def lifespan(_: FastAPI):
@@ -140,7 +146,7 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
         resp.headers["X-Frame-Options"] = "DENY"
         resp.headers["Referrer-Policy"] = "no-referrer"
         resp.headers["Content-Security-Policy"] = ("default-src 'self'; style-src 'self' 'unsafe-inline'; "
-                                                   "script-src 'self' 'unsafe-inline'; frame-ancestors 'none'")
+                                                   "script-src 'self'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'")
         if request.url.path.startswith("/api"):
             resp.headers["Cache-Control"] = "no-store"
         return resp
@@ -162,8 +168,8 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
             raise HTTPException(401, "invalid credentials or account locked")
         fails.pop(body.username, None)
         tok = new_token()
-        sessions[token_digest(tok)] = {"user": body.username, "full_name": acc["full_name"], "created": now, "last": now}
         clog(ctx | {"username": body.username}, "CONSOLE_LOGIN")
+        sessions[token_digest(tok)] = {"user": body.username, "full_name": acc["full_name"], "created": now, "last": now}
         return {"token": tok, "user": {"username": body.username, "full_name": acc["full_name"]}}
 
     @app.post("/api/logout")
@@ -182,7 +188,8 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
         return {"ok": res.ok, "records": res.records, "head_hash": res.head_hash, "bad_seq": res.bad_seq or None,
                 "reason": res.reason or None, "checked_at": cache["at"], "checkpoints": len(cps),
                 "alerts": len(_read_jsonl(cfg.alerts_file)),
-                "last_checkpoint": cps[-1] if cps else None}
+                "last_checkpoint": cps[-1] if cps else None, "scheduler": scheduler_status,
+                "checkpoint_interval": cfg.checkpoint_interval}
 
     def safe_scan(force: bool = False) -> ScanResult:
         try:
@@ -219,8 +226,8 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
         return list(reversed(_read_jsonl(cfg.checkpoints_file)))[:50]
 
     # ------------------------------------------------------------ reading the trail
-    def trusted_entries() -> list[dict]:
-        res = safe_scan()
+    def trusted_entries(res=None) -> list[dict]:
+        res = res if res is not None else safe_scan()
         if not res.ok:  # fail closed: a log that fails verification releases nothing
             raise HTTPException(409, {"error": "AUDIT LOG FAILED VERIFICATION: contents withheld",
                                       "bad_seq": res.bad_seq, "reason": res.reason})
@@ -298,5 +305,7 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
     def health():
         return {"status": "ok"}
 
+    app.include_router(create_router(current, clog, safe_scan, trusted_entries, console_verifier, checkpoints))
+    app.mount('/assets', StaticFiles(directory=os.path.join(os.path.dirname(__file__), '..', 'static')), name='assets')
     app.mount("/", StaticFiles(directory=os.path.join(os.path.dirname(__file__), "static"), html=True), name="static")
     return app

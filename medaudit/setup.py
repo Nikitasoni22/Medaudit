@@ -8,6 +8,7 @@ import string
 import time
 
 from .auditlog import AuditWriter, create_keyring
+from .auditlog.platformio import make_private, private_open
 from .config import Config
 from .hospital.db import DB
 from .security import hash_password
@@ -48,6 +49,7 @@ def init_system(cfg: Config, demo: bool = False, seed_patients: bool = True) -> 
         raise SystemExit(f"already initialised in {cfg.data_dir} (delete it to start over)")
     for d in (cfg.data_dir, cfg.hospital_dir, cfg.auditor_dir):
         os.makedirs(d, mode=0o700, exist_ok=True)
+        make_private(d)
 
     # 1. root key lives on the AUDITOR side only; the hospital host receives just the chain start key
     root = create_keyring(cfg.root_keys)
@@ -78,7 +80,7 @@ def init_system(cfg: Config, demo: bool = False, seed_patients: bool = True) -> 
 
     # 4. auditor console accounts
     acc = {"auditor1": {"full_name": "Neha Joshi (compliance)", "pw_hash": hash_password(pw["auditor1"], cfg.pbkdf2_iters)}}
-    fd = os.open(cfg.auditors_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    fd = private_open(cfg.auditors_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
     os.write(fd, json.dumps(acc).encode())
     os.close(fd)
     return pw

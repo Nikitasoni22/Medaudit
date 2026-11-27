@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+from ..auditlog.platformio import make_private
 from contextlib import contextmanager
 
 SCHEMA = """
@@ -35,7 +36,7 @@ class DB:
         os.makedirs(os.path.dirname(self.path), mode=0o700, exist_ok=True)
         with self.conn() as c:
             c.executescript(SCHEMA)
-        os.chmod(self.path, 0o600)
+        make_private(self.path)
 
     @contextmanager
     def conn(self):

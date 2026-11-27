@@ -23,7 +23,7 @@ BACKUP, PRE = os.path.join(cfg.data_dir, ".attacker_backup"), os.path.join(cfg.d
 cmd = sys.argv[1] if len(sys.argv) > 1 else ""
 n = int(sys.argv[2]) if len(sys.argv) > 2 else None
 def lines(): return open(LOG).read().split("\n")[:-1]
-def save(ls): open(LOG, "w").write("\n".join(ls) + "\n")
+def save(ls): open(LOG, "w", newline="").write("\n".join(ls) + "\n")
 def snapshot(dst): shutil.rmtree(dst, ignore_errors=True); shutil.copytree(AUD, dst)
 def restore(src): shutil.rmtree(AUD); shutil.copytree(src, AUD)
 

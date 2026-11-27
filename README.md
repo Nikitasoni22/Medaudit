@@ -12,10 +12,45 @@ record, and can we prove nobody altered that history?**
 
 They are separate processes with separate data directories, as they would be on separate machines in production.
 
+
+## Version 2 demonstration workspace
+
+![Auditor workspace](docs/screenshots/auditor-overview.png)
+
+The redesigned hospital and auditor interfaces share an accessible, responsive
+clinical workspace. New features complete the investigation workflow:
+
+- **Emergency reviews:** append a reviewed/flagged disposition, explanation,
+  reviewer, and revision to the verified encrypted console history.
+- **Security findings:** explain repeated denied access, failed sign-ins, and
+  emergency grants with source sequence numbers and documented thresholds.
+- **Evidence export:** verified patient/user/event-filtered JSON and CSV with
+  snapshot metadata, checkpoint references, an audited download, and CSV formula
+  protection.
+- **Engineering assurance:** inspect requirements, STRIDE threats, architecture,
+  and test references; simulate the real role/relationship authorization policy
+  without changing account access.
+- **Guided demonstration:** follow the complete access-to-evidence story and run
+  an isolated tampering/rollback lab with `python scripts/demo_lab.py`.
+- **Native Windows safety:** protected NTFS DACLs and process file locks, alongside
+  the existing POSIX implementation. Use **Python 3.12** for the documented setup.
+
+Local verification: **73 tests passed**, **92% statement coverage** on Windows,
+no known advisories in the locked runtime dependency scan, and a completed desktop
+and mobile browser rehearsal. These are measured local results, not a claim of
+production security or complete standards compliance. See
+[verification evidence](docs/verification.json), [engineering methods](docs/ENGINEERING.md),
+and [the presentation walkthrough](docs/DEMO.md).
+
+Generated keys, databases, and audit state are no longer tracked. **Keys in old
+Git history remain public.** Use a fresh installation; do not reuse the original
+bundled data. In an existing old clone, choose a new private directory, for
+example `python run.py --demo --data data-v2` (add it to your local Git ignore).
+
 ## Quick start
 
 ```bash
-pip install -r requirements.txt
+python -m pip install --require-hashes --only-binary=:all: -r requirements.lock
 python run.py --demo            # creates ./data with demo accounts, starts both services
 ```
 
@@ -79,7 +114,7 @@ it generates random passwords and prints them once.
 
 | Principle | Implementation |
 |---|---|
-| Never trust, always verify | Bearer session on every call; idle (15 min) + absolute (8 h) expiry; disabling a user kills their sessions; only the SHA-256 of tokens is stored |
+| Never trust, always verify | Bearer session on every call; browser credentials stay in memory; idle (15 min) + absolute (8 h) expiry; disabling a user kills their sessions; only the SHA-256 of tokens is stored |
 | Least privilege | Roles + **care relationship**: nurses/doctors see clinical data only for *assigned* patients; admins manage accounts but see **no** patient data; receptionists see demographics only |
 | Deny by default | Unknown role/permission is refused (`rbac.decide`); denials are logged |
 | Break-glass | Emergency access needs a stated reason, is time-limited (30 min), scoped to one patient, logged as `CRITICAL`, and shown in the auditor's break-glass report |
@@ -93,10 +128,25 @@ it generates random passwords and prints them once.
 Status banner (verified / tampering), audit trail with filters, **patient access report** (accounting of disclosures),
 break-glass review, tamper alerts, checkpoints, and the **console's own activity log** (who looked at the audit trail).
 
+## Repeatable checks
+
+```bash
+python -m pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
+python -m ruff check medaudit tests scripts
+python scripts/demo_lab.py
+python -m playwright install chromium
+python scripts/browser_check.py
+```
+
+The browser check starts disposable services on ports 18000/18001 and writes
+screenshots to `docs/screenshots/`. It does not reset your running dataset.
+GitHub Actions checks Windows and Linux; read the actual run for remote status.
+
 ## Tests
 
 ```bash
-python -m pytest tests -q        # 52 tests, ~3 s
+python -m pip install --require-hashes --only-binary=:all: -r requirements-dev.lock
+python -m pytest tests -q --cov=medaudit   # see docs/verification.json for measured results
 ```
 
 * `test_auditlog.py`: confidentiality, ciphertext/tag/metadata tampering, delete/reorder/replay, tail truncation (with and
@@ -134,7 +184,7 @@ This is an engineering reference, not legal advice or a compliance certification
 * **Ship checkpoints off-host** (WORM bucket, SIEM, email) and verify against them. The built-in store is on the auditor side only.
 * Serve both apps behind **TLS** (reverse proxy); add rate limiting there (unauthenticated failed logins are logged and could be flooded).
 * Replace SQLite with a managed database; **encrypt PHI at rest** (disk or field level). Only the audit log is encrypted here.
-* Add **MFA** and SSO for staff; persist auditor sessions; store session tokens in secure cookies if you add server-rendered pages.
+* Add **MFA** and SSO for staff; persist auditor sessions; evaluate secure HttpOnly cookies with CSRF protection for a production browser session design.
 * Run `chattr +a` on `audit.log` and monitor `state.key` permissions.
 
 ## Known limitations
@@ -154,6 +204,6 @@ medaudit/hospital/   FastAPI app, RBAC rules, SQLite layer, web UI
 medaudit/auditor/    FastAPI console and web UI
 medaudit/setup.py    one-time initialisation (keys, accounts, synthetic patients)
 scripts/             init_system, attack_demo, rotate_key, verify_offline
-tests/               52 tests
+tests/               engine, API, workflow, and platform security regressions
 run.py               starts both services as separate processes
 ```

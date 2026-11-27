@@ -1,0 +1,440 @@
+[
+  {
+    "id": "T001",
+    "file": "test_auditlog.py",
+    "test": "test_roundtrip_and_confidentiality",
+    "result": "PASS"
+  },
+  {
+    "id": "T002",
+    "file": "test_auditlog.py",
+    "test": "test_empty_log_ok",
+    "result": "PASS"
+  },
+  {
+    "id": "T003",
+    "file": "test_auditlog.py",
+    "test": "test_tamper_ciphertext_and_tag[7]",
+    "result": "PASS"
+  },
+  {
+    "id": "T004",
+    "file": "test_auditlog.py",
+    "test": "test_tamper_ciphertext_and_tag[8]",
+    "result": "PASS"
+  },
+  {
+    "id": "T005",
+    "file": "test_auditlog.py",
+    "test": "test_metadata_is_authenticated[3-CRITICAL]",
+    "result": "PASS"
+  },
+  {
+    "id": "T006",
+    "file": "test_auditlog.py",
+    "test": "test_metadata_is_authenticated[4-mallory]",
+    "result": "PASS"
+  },
+  {
+    "id": "T007",
+    "file": "test_auditlog.py",
+    "test": "test_metadata_is_authenticated[2-2000-01-01T00:00:00Z]",
+    "result": "PASS"
+  },
+  {
+    "id": "T008",
+    "file": "test_auditlog.py",
+    "test": "test_delete_swap_replay",
+    "result": "PASS"
+  },
+  {
+    "id": "T009",
+    "file": "test_auditlog.py",
+    "test": "test_garbage_and_partial",
+    "result": "PASS"
+  },
+  {
+    "id": "T010",
+    "file": "test_auditlog.py",
+    "test": "test_tail_truncation_detected",
+    "result": "PASS"
+  },
+  {
+    "id": "T011",
+    "file": "test_auditlog.py",
+    "test": "test_truncation_plus_anchor_deleted",
+    "result": "PASS"
+  },
+  {
+    "id": "T012",
+    "file": "test_auditlog.py",
+    "test": "test_forged_anchor_and_swapped_anchor",
+    "result": "PASS"
+  },
+  {
+    "id": "T013",
+    "file": "test_auditlog.py",
+    "test": "test_log_deleted_and_bad_anchor_file",
+    "result": "PASS"
+  },
+  {
+    "id": "T014",
+    "file": "test_auditlog.py",
+    "test": "test_crash_recovery",
+    "result": "PASS"
+  },
+  {
+    "id": "T015",
+    "file": "test_auditlog.py",
+    "test": "test_forward_security",
+    "result": "PASS"
+  },
+  {
+    "id": "T016",
+    "file": "test_auditlog.py",
+    "test": "test_rotation",
+    "result": "PASS"
+  },
+  {
+    "id": "T017",
+    "file": "test_auditlog.py",
+    "test": "test_rollback_needs_external_checkpoint",
+    "result": "PASS"
+  },
+  {
+    "id": "T018",
+    "file": "test_auditlog.py",
+    "test": "test_checkpoint_parse_and_refusal",
+    "result": "PASS"
+  },
+  {
+    "id": "T019",
+    "file": "test_auditlog.py",
+    "test": "test_key_file_handling",
+    "result": "PASS"
+  },
+  {
+    "id": "T020",
+    "file": "test_auditlog.py",
+    "test": "test_permissions_and_reinit",
+    "result": "PASS"
+  },
+  {
+    "id": "T021",
+    "file": "test_auditlog.py",
+    "test": "test_input_validation",
+    "result": "PASS"
+  },
+  {
+    "id": "T022",
+    "file": "test_auditlog.py",
+    "test": "test_iv_uniqueness_and_reuse_detected",
+    "result": "PASS"
+  },
+  {
+    "id": "T023",
+    "file": "test_auditlog.py",
+    "test": "test_concurrent_writers",
+    "result": "PASS"
+  },
+  {
+    "id": "T024",
+    "file": "test_auditor.py",
+    "test": "test_auditor_requires_login",
+    "result": "PASS"
+  },
+  {
+    "id": "T025",
+    "file": "test_auditor.py",
+    "test": "test_status_logs_and_filters",
+    "result": "PASS"
+  },
+  {
+    "id": "T026",
+    "file": "test_auditor.py",
+    "test": "test_patient_accounting_of_disclosures_and_break_glass_report",
+    "result": "PASS"
+  },
+  {
+    "id": "T027",
+    "file": "test_auditor.py",
+    "test": "test_tamper_blocks_release_and_raises_alert",
+    "result": "PASS"
+  },
+  {
+    "id": "T028",
+    "file": "test_auditor.py",
+    "test": "test_tail_truncation_alert",
+    "result": "PASS"
+  },
+  {
+    "id": "T029",
+    "file": "test_auditor.py",
+    "test": "test_rollback_detected_by_published_checkpoint",
+    "result": "PASS"
+  },
+  {
+    "id": "T030",
+    "file": "test_auditor.py",
+    "test": "test_concurrent_logging_never_false_alarms",
+    "result": "PASS"
+  },
+  {
+    "id": "T031",
+    "file": "test_auditor.py",
+    "test": "test_console_activity_is_itself_logged_and_verifiable",
+    "result": "PASS"
+  },
+  {
+    "id": "T032",
+    "file": "test_auditor.py",
+    "test": "test_failed_console_logins_are_logged_and_locked",
+    "result": "PASS"
+  },
+  {
+    "id": "T033",
+    "file": "test_auditor.py",
+    "test": "test_root_key_not_on_hospital_side",
+    "result": "PASS"
+  },
+  {
+    "id": "T034",
+    "file": "test_hospital.py",
+    "test": "test_unauthenticated_is_rejected",
+    "result": "PASS"
+  },
+  {
+    "id": "T035",
+    "file": "test_hospital.py",
+    "test": "test_login_logout_and_session",
+    "result": "PASS"
+  },
+  {
+    "id": "T036",
+    "file": "test_hospital.py",
+    "test": "test_failed_login_is_generic_and_logged",
+    "result": "PASS"
+  },
+  {
+    "id": "T037",
+    "file": "test_hospital.py",
+    "test": "test_lockout_after_repeated_failures",
+    "result": "PASS"
+  },
+  {
+    "id": "T038",
+    "file": "test_hospital.py",
+    "test": "test_session_idle_expiry",
+    "result": "PASS"
+  },
+  {
+    "id": "T039",
+    "file": "test_hospital.py",
+    "test": "test_receptionist_sees_demographics_only",
+    "result": "PASS"
+  },
+  {
+    "id": "T040",
+    "file": "test_hospital.py",
+    "test": "test_doctor_assigned_vs_not_assigned",
+    "result": "PASS"
+  },
+  {
+    "id": "T041",
+    "file": "test_hospital.py",
+    "test": "test_nurse_cannot_edit_but_can_read_assigned",
+    "result": "PASS"
+  },
+  {
+    "id": "T042",
+    "file": "test_hospital.py",
+    "test": "test_doctor_update_is_audited_without_phi",
+    "result": "PASS"
+  },
+  {
+    "id": "T043",
+    "file": "test_hospital.py",
+    "test": "test_search_text_not_logged",
+    "result": "PASS"
+  },
+  {
+    "id": "T044",
+    "file": "test_hospital.py",
+    "test": "test_break_glass_flow",
+    "result": "PASS"
+  },
+  {
+    "id": "T045",
+    "file": "test_hospital.py",
+    "test": "test_break_glass_expires",
+    "result": "PASS"
+  },
+  {
+    "id": "T046",
+    "file": "test_hospital.py",
+    "test": "test_admin_has_no_phi_access",
+    "result": "PASS"
+  },
+  {
+    "id": "T047",
+    "file": "test_hospital.py",
+    "test": "test_admin_user_management_is_audited",
+    "result": "PASS"
+  },
+  {
+    "id": "T048",
+    "file": "test_hospital.py",
+    "test": "test_create_patient_and_doctor_auto_assigned",
+    "result": "PASS"
+  },
+  {
+    "id": "T049",
+    "file": "test_hospital.py",
+    "test": "test_fail_closed_when_audit_log_unavailable",
+    "result": "PASS"
+  },
+  {
+    "id": "T050",
+    "file": "test_hospital.py",
+    "test": "test_update_not_applied_if_audit_fails",
+    "result": "PASS"
+  },
+  {
+    "id": "T051",
+    "file": "test_hospital.py",
+    "test": "test_input_validation_and_security_headers",
+    "result": "PASS"
+  },
+  {
+    "id": "T052",
+    "file": "test_hospital.py",
+    "test": "test_log_is_verifiable_and_tamper_evident_end_to_end",
+    "result": "PASS"
+  },
+  {
+    "id": "T053",
+    "file": "test_platformio.py",
+    "test": "test_native_roundtrip_and_private_key",
+    "result": "PASS"
+  },
+  {
+    "id": "T054",
+    "file": "test_platformio.py",
+    "test": "test_public_key_permissions_are_refused",
+    "result": "PASS"
+  },
+  {
+    "id": "T055",
+    "file": "test_platformio.py",
+    "test": "test_missing_lock_cannot_bypass_verifier_coordination",
+    "result": "PASS"
+  },
+  {
+    "id": "T056",
+    "file": "test_upgrade.py",
+    "test": "test_new_workflows_require_auditor[/api/reviews]",
+    "result": "PASS"
+  },
+  {
+    "id": "T057",
+    "file": "test_upgrade.py",
+    "test": "test_new_workflows_require_auditor[/api/findings]",
+    "result": "PASS"
+  },
+  {
+    "id": "T058",
+    "file": "test_upgrade.py",
+    "test": "test_new_workflows_require_auditor[/api/export]",
+    "result": "PASS"
+  },
+  {
+    "id": "T059",
+    "file": "test_upgrade.py",
+    "test": "test_new_workflows_require_auditor[/api/engineering]",
+    "result": "PASS"
+  },
+  {
+    "id": "T060",
+    "file": "test_upgrade.py",
+    "test": "test_review_persists_and_rejects_stale_revision",
+    "result": "PASS"
+  },
+  {
+    "id": "T061",
+    "file": "test_upgrade.py",
+    "test": "test_review_requires_real_grant_and_meaningful_note",
+    "result": "PASS"
+  },
+  {
+    "id": "T062",
+    "file": "test_upgrade.py",
+    "test": "test_findings_are_explainable",
+    "result": "PASS"
+  },
+  {
+    "id": "T063",
+    "file": "test_upgrade.py",
+    "test": "test_verified_export_filters_and_audits",
+    "result": "PASS"
+  },
+  {
+    "id": "T064",
+    "file": "test_upgrade.py",
+    "test": "test_csv_formula_cells_are_inert",
+    "result": "PASS"
+  },
+  {
+    "id": "T065",
+    "file": "test_upgrade.py",
+    "test": "test_tamper_blocks_new_evidence_paths[/api/reviews]",
+    "result": "PASS"
+  },
+  {
+    "id": "T066",
+    "file": "test_upgrade.py",
+    "test": "test_tamper_blocks_new_evidence_paths[/api/findings]",
+    "result": "PASS"
+  },
+  {
+    "id": "T067",
+    "file": "test_upgrade.py",
+    "test": "test_tamper_blocks_new_evidence_paths[/api/export]",
+    "result": "PASS"
+  },
+  {
+    "id": "T068",
+    "file": "test_upgrade.py",
+    "test": "test_review_and_export_fail_closed_on_console_failure",
+    "result": "PASS"
+  },
+  {
+    "id": "T069",
+    "file": "test_upgrade.py",
+    "test": "test_engineering_policy_simulates_without_changing_access",
+    "result": "PASS"
+  },
+  {
+    "id": "T070",
+    "file": "test_upgrade.py",
+    "test": "test_patient_boundary_validation[body0]",
+    "result": "PASS"
+  },
+  {
+    "id": "T071",
+    "file": "test_upgrade.py",
+    "test": "test_patient_boundary_validation[body1]",
+    "result": "PASS"
+  },
+  {
+    "id": "T072",
+    "file": "test_upgrade.py",
+    "test": "test_patient_boundary_validation[body2]",
+    "result": "PASS"
+  },
+  {
+    "id": "T073",
+    "file": "test_upgrade.py",
+    "test": "test_blank_emergency_reason_rejected",
+    "result": "PASS"
+  }
+]

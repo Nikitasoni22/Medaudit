@@ -201,7 +201,7 @@ def test_fail_closed_when_audit_log_unavailable(sys_):
     c, cfg = sys_
     h = login(c, "dr.rao")
     assert c.get("/api/patients/P-1001", headers=h).status_code == 200
-    os.chmod(os.path.join(cfg.audit_dir, "state.key"), 0o644)            # writer refuses unsafe state
+    os.rename(os.path.join(cfg.audit_dir, "state.key"), os.path.join(cfg.audit_dir, "state.key.unavailable"))            # writer refuses unsafe state
     r = c.get("/api/patients/P-1001", headers=h)
     assert r.status_code == 503 and "diagnosis" not in r.text
     assert c.get("/api/patients", headers=h).status_code == 503
@@ -211,9 +211,9 @@ def test_fail_closed_when_audit_log_unavailable(sys_):
 def test_update_not_applied_if_audit_fails(sys_):
     c, cfg = sys_
     h = login(c, "dr.rao")
-    os.chmod(os.path.join(cfg.audit_dir, "state.key"), 0o644)
+    os.rename(os.path.join(cfg.audit_dir, "state.key"), os.path.join(cfg.audit_dir, "state.key.unavailable"))
     assert c.put("/api/patients/P-1001/clinical", json={"notes": "CHANGED"}, headers=h).status_code == 503
-    os.chmod(os.path.join(cfg.audit_dir, "state.key"), 0o600)
+    os.rename(os.path.join(cfg.audit_dir, "state.key.unavailable"), os.path.join(cfg.audit_dir, "state.key"))
     assert c.get("/api/patients/P-1001", headers=h).json()["notes"] != "CHANGED"
 
 

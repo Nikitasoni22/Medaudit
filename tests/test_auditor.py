@@ -73,7 +73,7 @@ def test_tamper_blocks_release_and_raises_alert(both):
     log = os.path.join(cfg.audit_dir, "audit.log")
     ls = open(log).read().split("\n")[:-1]
     f = ls[2].split("|"); f[7] = ("1" if f[7][0] == "0" else "0") + f[7][1:]; ls[2] = "|".join(f)
-    open(log, "w").write("\n".join(ls) + "\n")
+    open(log, "w", newline="").write("\n".join(ls) + "\n")
     r = a.get("/api/logs", headers=ah)
     assert r.status_code == 409 and "withheld" in r.text and r.json()["detail"]["bad_seq"] == 3
     assert a.get("/api/reports/patient/P-1001", headers=ah).status_code == 409
@@ -89,7 +89,7 @@ def test_tail_truncation_alert(both):
     ah = hl(a, "auditor1")
     log = os.path.join(cfg.audit_dir, "audit.log")
     ls = open(log).read().split("\n")[:-1]
-    open(log, "w").write("\n".join(ls[:-3]) + "\n")
+    open(log, "w", newline="").write("\n".join(ls[:-3]) + "\n")
     s = a.post("/api/verify", headers=ah).json()
     assert not s["ok"] and "truncated" in s["reason"]
 

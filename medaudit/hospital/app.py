@@ -14,12 +14,13 @@ import os
 import re
 import time
 import uuid
+from datetime import date
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from ..auditlog import AuditWriter
 from ..config import Config
@@ -39,10 +40,18 @@ class LoginIn(BaseModel):
 
 
 class PatientIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra='forbid')
     name: str = Field(min_length=1, max_length=100)
     dob: str = Field(pattern=DATE_RE)
     sex: str = Field(pattern=r"^[MFO]$")
     ward: str = Field(default="", max_length=40)
+
+    @field_validator('dob')
+    @classmethod
+    def real_date(cls, value):
+        if date.fromisoformat(value) > date.today():
+            raise ValueError('date of birth cannot be in the future')
+        return value
 
 
 class ClinicalIn(BaseModel):
@@ -51,6 +60,7 @@ class ClinicalIn(BaseModel):
 
 
 class BreakGlassIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra='forbid')
     reason: str = Field(min_length=10, max_length=300)
 
 
@@ -145,8 +155,8 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
         resp.headers["X-Frame-Options"] = "DENY"
         resp.headers["Referrer-Policy"] = "no-referrer"
         resp.headers["Content-Security-Policy"] = (
-            "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
-            "frame-ancestors 'none'")
+            "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; "
+            "frame-ancestors 'none'; object-src 'none'; base-uri 'none'")
         if request.url.path.startswith("/api"):
             resp.headers["Cache-Control"] = "no-store"
         return resp
@@ -365,5 +375,6 @@ def create(cfg: Optional[Config] = None) -> FastAPI:
         return {"status": "ok"}
 
     static = os.path.join(os.path.dirname(__file__), "static")
+    app.mount('/assets', StaticFiles(directory=os.path.join(os.path.dirname(__file__), '..', 'static')), name='assets')
     app.mount("/", StaticFiles(directory=static, html=True), name="static")
     return app

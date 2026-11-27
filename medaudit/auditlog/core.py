@@ -18,19 +18,19 @@ records cut off the tail are detected; checkpoints published off-host detect a f
 """
 from __future__ import annotations
 
-import fcntl
 import hashlib
 import hmac
 import os
 import re
 import secrets
-import stat
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Iterable, Optional
 
 from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
+from . import platformio
 
 MAGIC = "SL1"
 IV_LEN = 12
@@ -174,19 +174,11 @@ def parse_line(line: str) -> Optional[_Record]:
 def _check_private(path: str) -> None:
     """Secret files must be regular, not symlinks, and not group/other accessible."""
     try:
-        st = os.lstat(path)
+        platformio.check_private(path)
     except FileNotFoundError:
         raise KeyringError(f"missing: {os.path.basename(path)}")
-    if not stat.S_ISREG(st.st_mode) or (st.st_mode & 0o077):
+    except PermissionError:
         raise KeyringError(f"unsafe permissions: {os.path.basename(path)}")
-
-
-def _fsync_dir(path: str) -> None:
-    fd = os.open(path or ".", os.O_RDONLY | os.O_DIRECTORY)
-    try:
-        os.fsync(fd)
-    finally:
-        os.close(fd)
 
 
 def _atomic_write(path: str, data: bytes) -> None:
@@ -196,19 +188,18 @@ def _atomic_write(path: str, data: bytes) -> None:
         os.unlink(tmp)
     except FileNotFoundError:
         pass
-    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    fd = platformio.private_open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
     try:
         os.write(fd, data)
         os.fsync(fd)
     finally:
         os.close(fd)
-    os.replace(tmp, path)
-    _fsync_dir(os.path.dirname(path))
+    platformio.replace_and_sync(tmp, path)
 
 
 def _read_private(path: str) -> str:
     _check_private(path)
-    fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    fd = platformio.private_open(path, os.O_RDONLY)
     try:
         return os.read(fd, 1 << 20).decode()
     finally:
@@ -219,7 +210,7 @@ def _read_private(path: str) -> str:
 def create_keyring(path: str) -> bytes:
     """New key file (0600, O_EXCL) with key id 1. Returns the key (caller may need it once)."""
     key = secrets.token_bytes(32)
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    fd = platformio.private_open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL)
     try:
         os.write(fd, f"1:{key.hex()}\n".encode())
         os.fsync(fd)
@@ -249,9 +240,9 @@ def add_key(path: str) -> tuple[int, bytes]:
     keys = load_keyring(path)
     nid = max(keys) + 1
     key = secrets.token_bytes(32)
-    fd = os.open(path, os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW)
+    fd = platformio.private_open(path, os.O_WRONLY | os.O_APPEND)
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        platformio.lock(fd)
         os.write(fd, f"{nid}:{key.hex()}\n".encode())
         os.fsync(fd)
     finally:
@@ -284,6 +275,7 @@ class AuditWriter:
     @classmethod
     def initialize(cls, directory: str, root_key: bytes, key_id: int = 1) -> "AuditWriter":
         os.makedirs(directory, mode=0o700, exist_ok=True)
+        platformio.make_private(directory)
         w = cls(directory)
         if os.path.exists(w.state_path) or os.path.exists(w.log_path):
             raise IntegrityError("audit store already initialised")
@@ -304,7 +296,7 @@ class AuditWriter:
         if size == 0:
             return 0, ZERO_HASH
         n = min(size, 2 * MAX_LINE)
-        tail = os.pread(fd, n, size - n)
+        tail = platformio.read_at(fd, n, size - n)
         if len(tail) != n or not tail.endswith(b"\n"):
             raise IntegrityError("partial record at end of log")
         tail = tail[:-1]
@@ -336,16 +328,20 @@ class AuditWriter:
             self.w = w
 
         def __enter__(self):
-            self.lf = os.open(self.w.lock_path, os.O_RDWR | os.O_CREAT, 0o600)
-            fcntl.flock(self.lf, fcntl.LOCK_EX)
-            self.fd = os.open(self.w.log_path, os.O_RDWR | os.O_APPEND | os.O_CREAT | os.O_NOFOLLOW, 0o600)
-            if os.fstat(self.fd).st_mode & 0o022:
+            self.lf = platformio.private_open(self.w.lock_path, os.O_RDWR | os.O_CREAT)
+            self.fd = None
+            try:
+                platformio.lock(self.lf)
+                self.fd = platformio.private_open(self.w.log_path, os.O_RDWR | os.O_APPEND | os.O_CREAT)
+                platformio.check_private(self.w.log_path)
+            except Exception:
                 self.__exit__()
-                raise IntegrityError("log file is group/other writable")
+                raise
             return self.fd
 
         def __exit__(self, *a):
-            os.close(self.fd)
+            if self.fd is not None:
+                os.close(self.fd)
             os.close(self.lf)  # releases the flock
 
     # -- API -----------------------------------------------------------------
@@ -443,10 +439,16 @@ class AuditVerifier:
         # (which would raise a false tamper alarm). Writers wait only for the brief read.
         lock_fd = None
         try:
-            lock_fd = os.open(self.lock_path, os.O_RDONLY)
-            fcntl.flock(lock_fd, fcntl.LOCK_SH)
-        except OSError:
-            lock_fd = None
+            lock_fd = platformio.private_open(self.lock_path, os.O_RDONLY)
+        except FileNotFoundError:
+            if os.path.exists(self.log_path):
+                return fail(1, "audit lock file missing")
+        if lock_fd is not None:
+            try:
+                platformio.lock(lock_fd, shared=True)
+            except Exception:
+                os.close(lock_fd)
+                raise
         try:
             anchor = self._load_anchor()      # anchor is read BEFORE the log, so anchor <= log
             try:
